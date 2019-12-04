@@ -1,6 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
-import 'sanitize.css';
+import 'sanitize.css/sanitize.css';
 
 import './index.css';
 
