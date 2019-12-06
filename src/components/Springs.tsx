@@ -62,15 +62,16 @@ type DragItem = {
 //   }  
 // }
 
+type Swap = (dragIndex: number, hoverIndex: number) => void;
+
 type ItemProps = {
   index: number;
   text: string;
   swap: Swap;
-  // set: (obj: any) => void;
+  set: (obj: any) => void;
 }
 
-type Swap = (dragIndex: number, hoverIndex: number) => void;
-const Item = ({ index, text, swap }: ItemProps) => {
+const Item = ({ index, text, swap, set }: ItemProps) => {
   const li = React.useRef(null);
   const [, drag] = useDrag({
       item: {
@@ -83,17 +84,22 @@ const Item = ({ index, text, swap }: ItemProps) => {
     accept: 'item',
     drop(item: DragItem) {
       if (item.index === index) return;
-      // set((springIndex: number) => {
-      //   // console.log(springIndex);
-      //   //   if (springIndex === index)
-      //   //     return ({ y: item.index * 124 });
-      //     // } else if (springIndex === item.index) {
-      //     //   return ({ y: index * 124 });
-      //     // }
+      // set((springIndex: number | string) =>  {
+      //   if (springIndex === item.index) {
+      //     return ({ y: index * 124 });
+      //   } else if (springIndex === index) {
+      //     return ({ y: item.index * 124 });
+      //   }
       // });
+
+      // setTimeout(() => swap(item.index, index), 210);
       swap(item.index, index);
     },
-  })
+  });
+  useEffect(() => {
+    set((springIndex: number | string) => springIndex === index ? ({ y: index * 124 }) : ({}));
+  }, [index]);
+  
 
   drop(drag(li));
   return (
@@ -110,7 +116,7 @@ const Springs = () => {
     setList(update(list, { $splice: [ [dragIndex, 1], [hoverIndex, 0, dragItem] ] }));
   }, [list, setList]);
 
-  const springs = useSprings(list.length, list.map((_, index) => ({ transform: `translateY(${index * 124}px)` })));
+  const [springs, set] = useSprings(list.length, index => ({ y: index * 124, duration: 200 }));
 
   return (
     <div>
@@ -121,9 +127,11 @@ const Springs = () => {
             {springs.map((props, index) => 
               <AItem 
                 key={index}
-                style={props}
+                style={{
+                   transform: props.y.interpolate((t: number | string | undefined) => `translateY(${t}px)`)
+                }}
               >
-                <Item  text={list[index]} index={index} swap={swap}  />
+                <Item  text={list[index]} set={set} index={index} swap={swap}  />
               </AItem >
             )}
           </UL>
