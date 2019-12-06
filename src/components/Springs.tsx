@@ -1,5 +1,5 @@
-import React, { useRef, useCallback, useState } from 'react';
-import { useSprings, animated as a } from 'react-spring';
+import React, { useRef, useCallback, useState, useEffect } from 'react';
+import { useSprings, useSpring, animated  } from 'react-spring';
 import styled from 'styled-components';
 import { useDrag, useDrop } from 'react-dnd';
 import update from 'immutability-helper';
@@ -17,7 +17,7 @@ const UL = styled.ul`
   position: relative;
 `;
 
-const ListItem = styled.li`
+const AItem = styled(animated.li)`
   position: absolute;
   left: 40px;
   height: 100px;
@@ -34,54 +34,83 @@ const ListItem = styled.li`
   cursor: grab;
 `;
 
-type Props = {
+type DragItem = { 
+  type: string; 
+  index: number, 
+  dragSet?: (index: number) => void 
+}
+
+// const useDnD = (fn: () => void) => {
+//   const li = React.useRef(null);
+//   const [, drag] = useDrag({
+//       item: {
+//         type: 'item',
+//         index: 0,
+//       },
+//       begin() {
+//         console.log(li.current);
+//       }
+//     });
+
+//   drag(li);
+//   useEffect(() => console.log(li), [fn]);
+//   return (index: number) => {
+    
+//     return {
+//       ref: li,
+//     }
+//   }  
+// }
+
+type ItemProps = {
   index: number;
   text: string;
-  swap: (dragIndex: number, hoverIndex: number) => void;
-  setSpring: any;
-  y: any;
+  swap: Swap;
+  // set: (obj: any) => void;
 }
-const Item = ({ index,  text, swap, setSpring, y }: Props) => {
-  const li = useRef(null);
-  const [{ isDragging }, drag] = useDrag({
-    item: {
-      type: 'item',
-      index,
-    },
-    collect: monitor => ({ isDragging: monitor.isDragging() })
-  });
+
+type Swap = (dragIndex: number, hoverIndex: number) => void;
+const Item = ({ index, text, swap }: ItemProps) => {
+  const li = React.useRef(null);
+  const [, drag] = useDrag({
+      item: {
+        type: 'item',
+        index,
+      },
+    });
 
   const [, drop] = useDrop({
     accept: 'item',
-    hover(item: { type: string; index: number }) {
-      if (!li.current) return;
-      if (index === item.index) return;
+    drop(item: DragItem) {
+      if (item.index === index) return;
+      // set((springIndex: number) => {
+      //   // console.log(springIndex);
+      //   //   if (springIndex === index)
+      //   //     return ({ y: item.index * 124 });
+      //     // } else if (springIndex === item.index) {
+      //     //   return ({ y: index * 124 });
+      //     // }
+      // });
       swap(item.index, index);
-      setSpring((index: any) => ({ y: (index * 124) }));
-      // !MUtATION
-      item.index = index;
-      // return item;
     },
-  });
+  })
 
-  drag(drop(li));
-  return <ListItem ref={li} style={{ transform: y.interpolate((y: string | number | undefined) => `translateY(${y ? y : 0}px)` )}} children={text} />
+  drop(drag(li));
+  return (
+    <div ref={li} style={{ height: '100%' }}>{text}</div>
+  );
 }
+
 
 const Springs = () => {
   const [list, setList] = useState(listItems);
 
-  const swap = useCallback((dragIndex: number, hoverIndex: number) => {
+  const swap: Swap = useCallback((dragIndex: number, hoverIndex: number) => {
     const dragItem = list[dragIndex];
     setList(update(list, { $splice: [ [dragIndex, 1], [hoverIndex, 0, dragItem] ] }));
   }, [list, setList]);
 
-  const [springs, set] = useSprings(list.length, index => ({ y: (index * 124) }));
-
-  const handleClick = (currInd: number) => () => {
-    // @ts-ignore
-    set((springIndex: Partial<Merge<{ y: number; }>>) => ({ y: springIndex === currInd ? 0 : springIndex * 124 }));
-  }
+  const springs = useSprings(list.length, list.map((_, index) => ({ transform: `translateY(${index * 124}px)` })));
 
   return (
     <div>
@@ -89,10 +118,14 @@ const Springs = () => {
       <ul>
         <ListCont>
           <UL height={list.length * 124}>
-            {springs.map((props, index) => {
-              const AItem = a(Item);
-              return <AItem key={index} swap={swap} y={props.y} index={index} text={list[index]} setSpring={set} />
-            })}
+            {springs.map((props, index) => 
+              <AItem 
+                key={index}
+                style={props}
+              >
+                <Item  text={list[index]} index={index} swap={swap}  />
+              </AItem >
+            )}
           </UL>
         </ListCont>
       </ul>
