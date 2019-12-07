@@ -24,7 +24,7 @@ const Ul = styled(a.ul)`
   justify-content: center;
   flex-flow: row wrap;
   position: relative;
-  padding: 7px 0;
+  padding-top: 7px;
 `;
 
 const Item = styled(a.li)`
@@ -64,14 +64,15 @@ const Todo = () => {
   const [list, setList] = useState<TodoList[]>([]);
   const input = useRef<HTMLInputElement>(null);
 
-  const [contProps, set] = useSpring(() => ({ height: list.length * 40 }));
+  const contProps = useSpring({ 
+    from: { height: 0 },
+    to: { height: (list.length * 35 + 5) + 7 },
+  });
 
   const handleSubmit = useCallback(() => {
     
     if (!input.current || !input.current!.value.trim()) return;
     const value = input.current!.value.trim();
-    // console.log(value);
-    console.log(list);
     setList(state => [...state, { id: Date.now().toString(16), text: value }]);
     input.current!.value = '';
   }, [list, setList]);
