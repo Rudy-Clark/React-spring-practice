@@ -4,7 +4,7 @@ import backend from 'react-dnd-html5-backend';
 
 import Basics from './Basics';
 import SpringExamples from './SpringExamples';
-import Springs from './Springs';
+import Transition from './Transition';
 
 const App: React.FC = () => {
   return (
@@ -15,7 +15,7 @@ const App: React.FC = () => {
       <SpringExamples />
       <h2>Springs: </h2>
       <DndProvider backend={backend}>
-        <Springs />
+        <Transition />
       </DndProvider>
       
     </div>

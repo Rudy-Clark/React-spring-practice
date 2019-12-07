@@ -1,10 +1,11 @@
 import React, { useRef, useCallback, useState, useEffect } from 'react';
-import { useSprings, useSpring, animated  } from 'react-spring';
+import { useTransition, useSpring, animated  } from 'react-spring';
 import styled from 'styled-components';
 import { useDrag, useDrop } from 'react-dnd';
 import update from 'immutability-helper';
 
-const listItems = ['Lorem', 'Ipsum', 'Amet', 'Dolor', 'Sit'];
+import Todo from './TODO';
+
 const ListCont = styled.div`
   border: 1px solid #f1f1f1;
   padding-top: 12px;
@@ -40,38 +41,15 @@ type DragItem = {
   dragSet?: (index: number) => void 
 }
 
-// const useDnD = (fn: () => void) => {
-//   const li = React.useRef(null);
-//   const [, drag] = useDrag({
-//       item: {
-//         type: 'item',
-//         index: 0,
-//       },
-//       begin() {
-//         console.log(li.current);
-//       }
-//     });
-
-//   drag(li);
-//   useEffect(() => console.log(li), [fn]);
-//   return (index: number) => {
-    
-//     return {
-//       ref: li,
-//     }
-//   }  
-// }
-
 type Swap = (dragIndex: number, hoverIndex: number) => void;
 
 type ItemProps = {
   index: number;
   text: string;
   swap: Swap;
-  set: (obj: any) => void;
 }
 
-const Item = ({ index, text, swap, set }: ItemProps) => {
+const Item = ({ index, text, swap }: ItemProps) => {
   const li = React.useRef(null);
   const [, drag] = useDrag({
       item: {
@@ -84,17 +62,12 @@ const Item = ({ index, text, swap, set }: ItemProps) => {
     accept: 'item',
     drop(item: DragItem) {
       if (item.index === index) return;
-      // set((springIndex: number | string) =>  {
-      //   if (springIndex === item.index) {
-      //     return ({ y: index * 124 });
-      //   } else if (springIndex === index) {
-      //     return ({ y: item.index * 124 });
-      //   }
-      // });
-
-      // setTimeout(() => swap(item.index, index), 210);
       swap(item.index, index);
     },
+    // hover(item: DragItem) {
+    //   if (item.index === index) return;
+    //   swap(item.index, index);
+    // }
   });
 
   drop(drag(li));
@@ -103,7 +76,7 @@ const Item = ({ index, text, swap, set }: ItemProps) => {
   );
 }
 
-
+const listItems = ['Lorem', 'Ipsum', 'Amet', 'Dolor', 'Sit'];
 const Springs = () => {
   const [list, setList] = useState(listItems);
 
@@ -112,7 +85,22 @@ const Springs = () => {
     setList(update(list, { $splice: [ [dragIndex, 1], [hoverIndex, 0, dragItem] ] }));
   }, [list, setList]);
 
-  const [springs, set] = useSprings(list.length, index => ({ y: index * 124, duration: 200 }));
+  // @ts-ignore
+  const transitions = useTransition(
+    list.map((text, index) => ({ y: index * 124, index, text })),
+    item => item.text,
+    {
+      // @ts-ignore
+      from: { opacity: 0, y: 0 },
+      // @ts-ignore
+      leave: { opacity: 0, y: 0 },
+      // @ts-ignore
+      enter: ({ y }) => ({ opacity: 1, y }),
+      // @ts-ignore
+      update: ({ y }) => ({ y }),
+      duration: 100,
+    }
+  );
 
   return (
     <div>
@@ -120,19 +108,22 @@ const Springs = () => {
       <ul>
         <ListCont>
           <UL height={list.length * 124}>
-            {springs.map((props, index) => 
+            {transitions.map(({ key, props: { y, opacity }, item }: {[key: string]: any}, index: number) => 
               <AItem 
-                key={index}
+                key={key}
                 style={{
-                   transform: props.y.interpolate((t: number | string | undefined) => `translateY(${t}px)`),
+                   transform: y.interpolate((t: number | string | undefined) => `translateY(${t}px)`),
+                   opacity,
+                   zIndex: list.length - index,
                 }}
               >
-                <Item  text={list[index]} set={set} index={index} swap={swap}  />
+                <Item  text={item.text} index={item.index} swap={swap}  />
               </AItem >
             )}
           </UL>
         </ListCont>
       </ul>
+      <Todo />
     </div>
   );
 }
