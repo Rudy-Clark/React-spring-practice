@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useRef } from 'react';
 // import { List, Map } from 'immutable';
 import styled from 'styled-components';
-import { useTransition, useSpring, animated as a } from 'react-spring';
+import { useTransition, useSpring, animated as a, useChain } from 'react-spring';
 
 
 const Input = styled.input`
@@ -23,8 +23,7 @@ const Ul = styled(a.ul)`
   display: flex;
   justify-content: center;
   flex-flow: row wrap;
-  position: relative;
-  padding-top: 7px;
+  overflow: hidden;
 `;
 
 const Item = styled(a.li)`
@@ -38,8 +37,7 @@ const Item = styled(a.li)`
   text-align: center;
   vertical-align: middle;
   font-weight: bold;
-  position: absolute;
-  left: 40px;
+  margin: 5px 0;
   box-shadow: 1px 2px 3px rgba(0, 0, 0, 0.3);
 `;
 
@@ -64,9 +62,14 @@ const Todo = () => {
   const [list, setList] = useState<TodoList[]>([]);
   const input = useRef<HTMLInputElement>(null);
 
-  const contProps = useSpring({ 
+  // @ts-ignore
+  const contRef = useRef();
+  // @ts-ignore
+  const contProps = useSpring({
+    ref: contRef,
     from: { height: 0 },
-    to: { height: (list.length * 35 + 5) + 7 },
+    to: { height: (list.length * 40 + 20)},
+    duration: 1000,
   });
 
   const handleSubmit = useCallback(() => {
@@ -77,27 +80,33 @@ const Todo = () => {
     input.current!.value = '';
   }, [list, setList]);
 
-  const transitionMap: (data: TodoList, index: number) => { id: string; opacity: number; text: string, y: number } = (data, index) => ({
+  const transitionMap: (data: TodoList, index: number) => { id: string; opacity: number; text: string, x: string } = (data, index) => ({
     id: data.id,
     opacity: 1,
     text: data.text,
-    y: index * 35, 
+    x: '0%',
   });
 
-  const getId: (data: { id: string; opacity: number; text: string, y: number }) => string = data => data.id;
+  const getId: (data: { id: string; opacity: number; text: string }) => string = data => data.id;
 
+  const transRef = useRef();
                       // @ts-ignore
   const transitions = useTransition(
     list.map(transitionMap), // created list object
     getId, // get id from list object
     {
-      from: { opacity: 0, y: 0 },
-      leave: { opacity: 0, y: 0 },
-      enter: ({ opacity, y }: any) => ({ opacity, y }),
-      update: ({ opacity, y }: any) => ({ opacity, y })
+      ref: transRef,
+      unique: true,
+
+      from: { opacity: 0, x: '-50%' },
+      leave: { opacity: 0, x: '-50%' },
+      enter: ({ opacity, x }: any) => ({ opacity: 1, x: '0%' }),
+      // update: ({ opacity, x }: any) => ({ opacity: 1, x: '0%' }),
     },
   );
 
+  // @ts-ignore
+  useChain([contRef, transRef], [0, 0.9]);
  
   return (
     <div style={{ height: '400px' }}>
@@ -108,7 +117,7 @@ const Todo = () => {
         {list.length ? transitions.map(({ key, item, props }: any) => (
           <Item 
             style={{
-              transform: props.y.interpolate((y: number | string | undefined) => `translateY(${y}px)`),
+              transform: props.x.interpolate((x: number | string | undefined) => `translate3d(${x}, 0, 0)`),
               ...props,
             }} 
             key={key}
