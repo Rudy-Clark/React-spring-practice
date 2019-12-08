@@ -2,6 +2,7 @@ import React, { useState, useCallback, useRef } from 'react';
 import styled from 'styled-components';
 import { useTransition, useSpring, useChain, animated as a } from 'react-spring';
 import update from 'immutability-helper';
+import { compose, map, curry } from 'ramda'; 
 
 const Input = styled.input`
   outline: none;
@@ -14,11 +15,10 @@ const Input = styled.input`
   padding: 0 8px;
 `;
 
-const Ul = styled(a.ul)`
+const Ul = styled.ul`
   padding: 20px 0;
   list-style: none;
   width: 400px;
-  border: 1px solid #e9e9e9;
   display: flex;
   justify-content: center;
   flex-flow: row wrap;
@@ -81,25 +81,27 @@ const SubmitButton = styled.button`
   cursor: pointer;
 `;
 
-interface TodoList {
+type TodoList = {
   id: string;
   text: string;
 }
 
+type FilterOff = (filterStr: string) => (data: { id: string; opacity: number; text: string }) => string;
+
 const Todo = () => {
   const [list, setList] = useState<TodoList[]>([]);
+  const [filterText, setFilter] = useState('');
   const [reverse, setRev] = useState(false);
   const input = useRef<HTMLInputElement>(null);
-  const filterInput = useRef<HTMLInputElement>(null);
 
-  // @ts-ignore
-  const contRef = useRef();
-  // @ts-ignore
-  const contProps = useSpring({
-    ref: contRef,
-    from: { height: 0 },
-    to: { height: (list.length * 40 + 40)},
-  });
+  // // @ts-ignore
+  // const contRef = useRef();
+  // // @ts-ignore
+  // const contProps = useSpring({
+  //   ref: contRef,
+  //   from: { height: 0 },
+  //   to: { height: (list.length * 40 + 40)},
+  // });
 
   const handleSubmit = useCallback(() => {
     if (!input.current || !input.current!.value.trim()) return;
@@ -107,14 +109,21 @@ const Todo = () => {
     const value = input.current!.value.trim();
     setList(state => [...state, { id: Date.now().toString(16), text: value }]);
     input.current!.value = '';
-  }, [list, setList, setRev]);
+  }, [list, setList, setRev, reverse]);
 
   const delItem = useCallback((index: number) => {
     if (!reverse) setRev(true);
     setList(update(list, { $splice: [[index, 1]] }));
-  }, [list, setList, setRev]);
+  }, [list, setList, setRev, reverse]);
 
-  const transitionMap: (data: TodoList, index: number) => { id: string; opacity: number; text: string, x: string } = (data, index) => ({
+  const handleChange = useCallback((e: React.FormEvent) => {
+    // @ts-ignore
+    const value = e.target.value.trim();
+    if (value) setFilter(value);
+    else setFilter('');
+  }, [filterText]);
+
+  const transitionMap: (data: TodoList) => { id: string; opacity: number; text: string, x: string } = data => ({
     id: data.id,
     opacity: 1,
     text: data.text,
@@ -122,15 +131,15 @@ const Todo = () => {
   });
 
   const getId: (data: { id: string; opacity: number; text: string }) => string = data => data.id;
+  
+  const filterByText = curry((filterText, list) => list.filter((data: TodoList) => data.text.toLowerCase().indexOf(filterText.toLowerCase()) !== -1));
+  const filterOff = compose(map(transitionMap), filterByText(filterText));
 
-  const transRef = useRef();
   // @ts-ignore
   const transitions = useTransition(
-    list.length ? list.map(transitionMap) : [], // created list object
+    list.length ? filterOff(list) : [], // created list object
     getId, // get id from list object
     {
-      ref: transRef,
-      // unique: true,
       duration: 100,
       from: { opacity: 0, x: '-50%' },
       leave: { opacity: 0, x: '-50%' },
@@ -138,8 +147,6 @@ const Todo = () => {
       update: ({ opacity, x }: any) => ({ opacity: 1, x: '0%' }),
     },
   );
-  // @ts-ignore
-  useChain(reverse ? [transRef, contRef] : [contRef, transRef], [0, 1]);
 
   return (
     <div style={{ height: '400px' }}>
@@ -147,8 +154,8 @@ const Todo = () => {
       <Input ref={input} id="todo" type="text" />
       <SubmitButton onClick={handleSubmit} type="button">Add</SubmitButton>
       <label style={{ paddingRight: '4px', marginLeft: '12px' }} htmlFor="filter">Filter:</label>
-      <Input ref={filterInput} placeholder="filter by text" id="filter" type="text" />
-      <Ul style={contProps}>
+      <Input onChange={handleChange} placeholder="filter by text" id="filter" type="text" />
+      <Ul>
         {transitions.map(({ key, item, props }: any, index: number) => (
           <Item 
             style={{
